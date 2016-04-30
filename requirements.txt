@@ -1,14 +1,16 @@
 # ----------------------
 # Flask
 # ----------------------
-flask
+Flask
 Flask-WTF
 Flask-SQLAlchemy
 Flask-Migrate
 Flask-Login
 Flask-OpenId
+WTForms
 psycopg2
-
+beautifulsoup4
+requests
 # ----------------------
 # Testing
 # ----------------------

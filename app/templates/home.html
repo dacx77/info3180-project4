@@ -5,6 +5,20 @@
 {% endblock %}
 
 
+
+
 {% block main %}
-I am home.
+<h1>MyWish Wishlist System</h1>
+Hello, please enter your wish URL:
+<form method="post" name="thumbForm" action="{{ url_for('showSubmit') }}" >
+    <label for="website">URL:</label>
+    <input type="text" name="website" /><br />
+    
+    <input type="submit" />                
+
+</form>
+<script type="text/javascript">
+    var name = localStorage.setItem('currentUser', "{{currentUser}}");
+    console.log(name);
+</script>
 {% endblock %}

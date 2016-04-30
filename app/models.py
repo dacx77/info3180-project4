@@ -1,27 +1,28 @@
 from . import db  
-class Myprofile(db.Model):     
-    id = db.Column(db.Integer, primary_key=True)     
-    first_name = db.Column(db.String(80))     
-    last_name = db.Column(db.String(80)) 
-    nickname = db.Column(db.String(80), unique=True)    
-    email = db.Column(db.String(120), index=True, unique=True)
- 
 
+class myprofile(db.Model):     
+    id = db.Column(db.Integer, primary_key=True)     
+    name = db.Column(db.String(80))
+    email = db.Column(db.String(120), index=True, unique=True)
+    password = db.Column(db.String)
+    url = db.Column(db.String)
     
-    def is_authenticated(self):
-        return True
 
     def is_active(self):
+        """True, as all users are active."""
         return True
 
-    def is_anonymous(self):
-        return False
-
     def get_id(self):
-        try:
-            return unicode(self.id)  # python 2 support
-        except NameError:
-            return str(self.id)  # python 3 support
+        """Return the email address to satisfy Flask-Login's requirements."""
+        return self.email
 
+    def is_authenticated(self):
+        """Return True if the user is authenticated."""
+        return self.authenticated
+
+    def is_anonymous(self):
+        """False, as anonymous users aren't supported."""
+        return False
+        
     def __repr__(self):
-        return '<User %r>' % (self.nickname)
+        return '{%s : %d}' % ("User", self.id)

@@ -1,3 +1,4 @@
+
 """
 Flask Documentation:     http://flask.pocoo.org/docs/
 Jinja2 Documentation:    http://jinja.pocoo.org/2/documentation/
@@ -13,80 +14,144 @@ from app import db
 from flask.ext.wtf import Form 
 from wtforms.fields import TextField # other fields include PasswordField 
 from wtforms.validators import Required, Email
-from app.models import Myprofile
+from app.models import myprofile
 from app.forms import LoginForm
 
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm, oid
 from app import oid, lm
+import requests
+from bs4 import BeautifulSoup
+import urlparse
+import sys
+import json
+
 
 class ProfileForm(Form):
-     first_name = TextField('First Name', validators=[Required()])
-     last_name = TextField('Last Name', validators=[Required()])
-     # evil, don't do this
-     image = TextField('Image', validators=[Required(), Email()])
-
-
-@app.before_request
-def before_request():
-    g.user = current_user
-    
+     name = TextField('Name', validators=[Required()])
+     email = TextField('Email', validators=[Required()])
+     password = TextField('Password', validators=[Required()])
+     
+#    
 ###
 # Routing for your application.
 ###
-@app.route('/login', methods=['GET', 'POST'])
-@oid.loginhandler
+@app.route('/', methods=['GET', 'POST'])
+@app.route('/api/user/login', methods=['POST'])
 def login():
-    if g.user is not None and g.user.is_authenticated():
-        return redirect(url_for('index'))
+    # Here we use a class of some kind to represent and validate our
+    # client-side form data. For example, WTForms is a library that will
+    # handle this for us, and we use a custom LoginForm to validate.
     form = LoginForm()
-    print app.config['OPENID_PROVIDERS']
-    if form.validate_on_submit():
-        session['remember_me'] = form.remember_me.data
-        return oid.try_login(form.openid.data, ask_for=['nickname', 'email'])
-    return render_template('login.html', 
-                           title='Sign In',
-                           form=form,
-                           providers=app.config['OPENID_PROVIDERS'])
-@app.route('/')
+    
+    error = None
+    if request.method == 'POST':
+        user_email = request.form['email']
+        user_pass = request.form['password']
+        
+        profile = myprofile.query.filter(myprofile.email == user_email).first()
+        
+        if profile.email != user_email or profile.password != user_pass:
+            error = 'Invalid Credentials. Please try again.'
+        else:
+            currentUser = profile.email
+            session['currentUser'] = currentUser
+            return redirect(url_for('home', currentUser=currentUser))
+    return render_template('login.html', form=form)
+    
+@app.route("/logout")
+
+def logout():
+    logout_user()
+    return render_template('logout.html')
+                           
+@app.route('/api/thumbnail/process')
 def home():
     """Render website's home page."""
-    return render_template('home.html')
+    currentUser = request.args['currentUser']  
+    currentUser = session['currentUser']
+    return render_template('home.html', currentUser = currentUser)
 
-@app.route('/profile/', methods=['POST','GET'])
+@app.route('/api/user/:id/wishlist', methods=['POST','GET'])
+def showSubmit():
+    if request.method == "POST":
+        picList=[]
+        website = request.form['website']
+        
+        url = website
+        result = requests.get(url)
+        soup = BeautifulSoup(result.text, "html.parser")
+        picList = [];
+        image = "<img src='%s'>"
+        for img in soup.findAll("img", src=True):
+            if "sprite" not in img["src"]:
+                message = image % urlparse.urljoin(url, img["src"])
+                
+                
+                picList.append(message)
+    
+        
+    
+    return render_template('thumb_action.html', website=website, picList=picList)
+    
+@app.route('/urladd', methods=['POST','GET'])    
+def urlAdd():
+    if request.method == "POST":
+          
+        currentUser = session['currentUser']
+        url_chosen = request.form['thumb']
+        profile = myprofile.query.filter(myprofile.email == currentUser).first()
+        
+        profile.url = url_chosen
+        
+    return render_template('url_added.html', url_chosen=url_chosen)
+    
+    
+
+@app.route('/api/user/register', methods=['POST','GET'])
 def profile_add():
+    import os
+    from flask import Flask, request, redirect, url_for
     if request.method == 'POST':
-        first_name = request.form['first_name']
-        last_name = request.form['last_name']
-
+        name = request.form['name']
+        email = request.form['email']
+        password = request.form['password']
+        
+        
+        
         # write the information to the database
-        newprofile = Myprofile(first_name=first_name,
-                               last_name=last_name)
+        newprofile = myprofile(name=name,email=email,password=password, url = "")
         db.session.add(newprofile)
         db.session.commit()
 
-        return "{} {} was added to the database".format(request.form['first_name'],
-                                             request.form['last_name'])
+        return "Name: {} with email: {} was created.".format(request.form['name'],request.form['email'])
 
     form = ProfileForm()
-    return render_template('profile_add.html',
-                           form=form)
+    return render_template('profile_add.html',form=form)
 
-@app.route('/profiles/',methods=["POST","GET"])
+@app.route('/profiles',methods=["POST","GET"])
+@login_required
 def profile_list():
-    profiles = Myprofile.query.all()
-    if request.method == "POST":
-        return jsonify({"age":4, "name":"John"})
-    return render_template('profile_list.html',
-                            profiles=profiles)
+    import json
+    profiles = myprofile.query.all()
+    if request.method == "GET":
+        profList = str(profiles)
+        
+        return jsonify({"users":profList})
+            #return jsonify({"id":[i].id, "sex":[i].sex, "image":[i].image, "high_score":[i].high_score, "tdollars":[i].tdollars})
+    return render_template('profile_list.html',profiles=profiles)
 
-@app.route('/profile/<int:id>')
+@app.route('/profile/<int:id>',methods=["POST","GET"])
 def profile_view(id):
-    profile = Myprofile.query.get(id)
+    profile = myprofile.query.get(id)
+    if request.method == "GET":
+        return jsonify({"data":"no instructions for GET"})
+    if request.method == "POST":
+        return jsonify({"id":profile.id, "email":profile.email})
     return render_template('profile_view.html',profile=profile)
 
 
-@app.route('/about/')
+@app.route('/about')
 def about():
     """Render the website's about page."""
     return render_template('about.html')

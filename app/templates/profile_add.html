@@ -6,10 +6,16 @@
 
 
 {% block main %}
-<form action="{{ url_for('profile_add') }}" method="post">
+<form action="{{ url_for('profile_add') }}" method="post" name="profileForm" enctype=multipart/form-data>
 
-       first name: {{ form.first_name }}<br />
-       last_name: {{ form.last_name }}<br />    
+       name: {{ form.name }}<br />
+       email: {{ form.email }}<br />
+       password: {{ form.password }}<br />
+       
+       
+
+       
+
        <input type="submit" />                
 
 </form> 
