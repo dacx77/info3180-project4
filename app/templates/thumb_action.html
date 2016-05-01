@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+
+}
+
+{% block css %}
+<style type="text/css">
+.result
+{
+   border: 5px solid #C3D8E4;
+}
+.selected
+{
+    border-color: green; 
+    border-width:8px; 
+    border-style:solid;
+}
+</style>
+{% endblock %}
+
+{% block main %}
+
+
+<div id="content">
+    <strong>URL Submitted: {{website}}</strong>
+    <br/>
+    <h2>Please select a thumbnail:</h2>
+    <hr/>
+    <div class = "row">
+    {% for pic in picList %}
+        <div class="col-xs-3">
+            <a class="thumbnail">
+                {{ pic|safe }}
+            </a>
+        </div>
+    {% endfor %}
+    </div>
+    <div class = "row text-center">
+        <form action="/urladd" method="post" enctype=multipart/form-data>
+                <input name="thumb" type="hidden" id="chosenThumb" value="" />
+                <input class="btn btn-default" type="submit" value="Choose">
+            </form>
+    </div>
+    
+    
+</div>
+<script   src="https://code.jquery.com/jquery-2.2.3.min.js"   integrity="sha256-a23g1Nt4dtEYOj7bR+vTu7+T8VP13humZFBJNIYoEJo="   crossorigin="anonymous"></script>
+<script type="text/javascript">
+    
+    $('img').click(function() {
+        $('img').removeClass('selected')
+        $(this).addClass('selected')
+        var image_url = $(this).attr('src');
+        $("#chosenThumb").val(image_url);
+        console.log(image_url);
+        
+    });
+</script>
+{% endblock %}

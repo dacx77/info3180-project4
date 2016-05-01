@@ -8,11 +8,11 @@ This file creates your application.
 """
 
 from app import app
-from flask import render_template, request, redirect, url_for,jsonify,g,session
+from flask import render_template, request, redirect, url_for,jsonify,g,session, flash
 from app import db
 
 from flask.ext.wtf import Form 
-from wtforms.fields import TextField # other fields include PasswordField 
+from wtforms import * # other fields include PasswordField 
 from wtforms.validators import Required, Email
 from app.models import myprofile
 from app.forms import LoginForm
@@ -20,22 +20,39 @@ from app.forms import LoginForm
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm, oid
 from app import oid, lm
+
+
+
 import requests
 from bs4 import BeautifulSoup
 import urlparse
 import sys
 import json
-
+import smtplib
+import string
+import hashlib
 
 class ProfileForm(Form):
-     name = TextField('Name', validators=[Required()])
+     name = TextField('First Name', validators=[Required()])
      email = TextField('Email', validators=[Required()])
      password = TextField('Password', validators=[Required()])
      
-#    
+
+
+
+
+    
 ###
 # Routing for your application.
 ###
+@lm.user_loader
+def user_loader(id):
+    """Given *user_id*, return the associated User object.
+
+    :param unicode user_id: user_id (email) user to retrieve
+    """
+    return myprofile.query.get(id)
+
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/api/user/login', methods=['POST'])
 def login():
@@ -49,14 +66,20 @@ def login():
         user_email = request.form['email']
         user_pass = request.form['password']
         
+        
         profile = myprofile.query.filter(myprofile.email == user_email).first()
+        
         
         if profile.email != user_email or profile.password != user_pass:
             error = 'Invalid Credentials. Please try again.'
         else:
-            currentUser = profile.email
-            session['currentUser'] = currentUser
-            return redirect(url_for('home', currentUser=currentUser))
+            userString = user_email + " " + user_pass
+            hash_object = hashlib.md5(userString)
+            nowUser = profile.email
+            session['nowUser'] = nowUser
+            response = app.make_response(redirect(url_for('home', nowUser=nowUser)))
+            response.headers['Authorization'] = 'Basic' + " " + (hash_object.hexdigest())
+            return response
     return render_template('login.html', form=form)
     
 @app.route("/logout")
@@ -64,13 +87,67 @@ def login():
 def logout():
     logout_user()
     return render_template('logout.html')
+    
+@app.route('/mail')
+def mail():
+    """Render the website's mail page."""
+    return render_template('share_page.html')
+    
+@app.route('/sendmail', methods=['GET', 'POST'])
+def sendmail():
+    test = request.form['choices']
+    test1 = test[1:-1]
+    testnew = test1.replace('"','')
+    
+    test3 = testnew.split(",")
+    #test2 = test3[1]
+    
+    for i in test3:
+        import smtplib
+        import string
+        
+        fromname = 'dacx77@gmail.com'
+        fromaddr = 'dacx77@gmail.com'
+        toname = 'Share to a friend'
+        toaddr = i
+        subject = 'Sharing my wishlist'
+        msg = 'Message'
+        
+        # Create the message
+        BODY = string.join((
+            "From: %s" % fromaddr,
+            "To: %s" % toaddr,
+            "Subject: %s" % subject ,
+            "",
+            msg
+            ), "\r\n")
+            
+        # Credentials (if needed)
+    
+        username = 'dacx77@gmail.com'
+    
+        password = 'pldvmqjwmedemezr'
+    
+        # The actual mail send
+        server = smtplib.SMTP('smtp.gmail.com:587')
+        server.starttls()
+        server.login(username,password)
+        server.sendmail(fromaddr, [toaddr], BODY)
+        server.quit()
+            
+    return render_template('mailSuccess.html', emails=test3)
                            
-@app.route('/api/thumbnail/process')
+@app.route('/api/thumbnail/process', methods=['POST','GET'])
 def home():
     """Render website's home page."""
-    currentUser = request.args['currentUser']  
-    currentUser = session['currentUser']
-    return render_template('home.html', currentUser = currentUser)
+    nowUser = request.args['nowUser']  
+    nowUser = session['nowUser']
+    
+    
+    
+    
+    profile = myprofile.query.filter(myprofile.email == nowUser).first()
+    return render_template('home.html', nowUser = nowUser, profile=profile)
 
 @app.route('/api/user/:id/wishlist', methods=['POST','GET'])
 def showSubmit():
@@ -93,16 +170,32 @@ def showSubmit():
         
     
     return render_template('thumb_action.html', website=website, picList=picList)
+
+'''@app.route('/urladd', methods=['POST','GET'])    
+def urlAdd():
+    if request.method == "POST":
+          
+        currentUser = session['nowUser']
+        url_chosen = request.form['chosenThumb']
+        profile = myprofile.query.filter(myprofile.email == nowUser).first()
+        
+        profile.url = url_chosen
+        #db.session.commit()
+        
+        
+    return render_template('url_added.html', url_chosen=url_chosen)'''
+
+
     
 @app.route('/urladd', methods=['POST','GET'])    
 def urlAdd():
     if request.method == "POST":
           
-        currentUser = session['currentUser']
-        url_chosen = request.form['thumb']
-        profile = myprofile.query.filter(myprofile.email == currentUser).first()
-        
-        profile.url = url_chosen
+        nowUser = session['nowUser']
+        url_chosen = request.form['chosenThumb']
+        profile = myprofile.query.filter(myprofile.email == nowUser).update({'url': str(url_chosen)})
+       
+        db.session.commit()
         
     return render_template('url_added.html', url_chosen=url_chosen)
     
@@ -112,6 +205,7 @@ def urlAdd():
 def profile_add():
     import os
     from flask import Flask, request, redirect, url_for
+    from werkzeug import secure_filename
     if request.method == 'POST':
         name = request.form['name']
         email = request.form['email']
@@ -124,13 +218,13 @@ def profile_add():
         db.session.add(newprofile)
         db.session.commit()
 
-        return "Name: {} with email: {} was created.".format(request.form['name'],request.form['email'])
+        return "Name: {}, Email: {} was created".format(request.form['name'],request.form['email'])
 
     form = ProfileForm()
     return render_template('profile_add.html',form=form)
 
 @app.route('/profiles',methods=["POST","GET"])
-@login_required
+#@login_required
 def profile_list():
     import json
     profiles = myprofile.query.all()
@@ -147,7 +241,8 @@ def profile_view(id):
     if request.method == "GET":
         return jsonify({"data":"no instructions for GET"})
     if request.method == "POST":
-        return jsonify({"id":profile.id, "email":profile.email})
+        
+        return jsonify({"id":profile.id, "email":profile.email, "url":profile.url})
     return render_template('profile_view.html',profile=profile)
 
 
@@ -168,15 +263,16 @@ def send_text_file(file_name):
     return app.send_static_file(file_dot_text)
 
 
-@app.after_request
-def add_header(response):
-    """
-    Add headers to both force latest IE rendering engine or Chrome Frame,
-    and also to cache the rendered page for 10 minutes.
-    """
-    response.headers['X-UA-Compatible'] = 'IE=Edge,chrome=1'
-    response.headers['Cache-Control'] = 'public, max-age=600'
-    return response
+# @app.after_request
+# def add_header(response,methods=["POST","GET"]):
+#     """
+#     Add headers to both force latest IE rendering engine or Chrome Frame,
+#     and also to cache the rendered page for 10 minutes.
+#     """
+    
+#     response.headers['X-UA-Compatible'] = 'IE=Edge,chrome=1'
+#     response.headers['Cache-Control'] = 'public, max-age=600'
+#     return response
 
 
 @app.errorhandler(404)

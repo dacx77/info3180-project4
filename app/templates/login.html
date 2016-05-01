@@ -4,12 +4,14 @@
 
 
 {% block main %}
-   <h1>Please login</h1>
+   <h2>Please login</h2>
    <br>
    <form id="login_form"action="" method="post">
        <input type="text" placeholder="Email" name="email" id="email" value="{{ form.email }}">
        <input type="password" placeholder="Password" name="password" value="{{ form.password }}">
        <input class="btn btn-default" type="submit" id="login_btn" value="Login">
+       <a href="{{ url_for('profile_add') }}"class="btn btn-default">Register</a>
+       
     </form>
     <script   src="https://code.jquery.com/jquery-2.2.3.min.js"   integrity="sha256-a23g1Nt4dtEYOj7bR+vTu7+T8VP13humZFBJNIYoEJo="   crossorigin="anonymous"></script>
     <script type="text/javascript">
@@ -65,7 +67,7 @@
     
       $( "#login_form" ).submit(function( event ) {
          user = $('#email').val();
-         store.set("currentUser", user)
+         store.set("nowUser", user)
       });
     </script>
 {% endblock %}

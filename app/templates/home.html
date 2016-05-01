@@ -4,21 +4,56 @@
 {% block js %}
 {% endblock %}
 
-
+{% block css %}
+<style type="text/css">
+  body{
+    padding-top: 100px;
+  }
+  h1, p,form{
+    text-align:center;
+  }
+  h1{
+    font-size:64px;
+    margin:75px 0 50px;
+  }
+  p{
+    font-size:24px;
+    margin:15px 0;
+  }
+  img
+  {
+      width: 300px;
+      height: 300px;
+  }
+</style>
+{% endblock %}
 
 
 {% block main %}
-<h1>MyWish Wishlist System</h1>
-Hello, please enter your wish URL:
+
+<div class="col-md-4 text-center" id="wishlist">
+    <p class="text-center">MyWish Wishlist</p>
+    <img class="text-center" src="{{profile.url}}" alt="wishlist">
+</div>
+<div class="col-md-4 text-center">
+    <p class="text-center">Share</p>
+    <a href="{{ url_for('mail') }}"class="btn btn-default">Share Wishlist</a>
+</div>
+<div class="col-md-4 text-center">
+    <p class="text-center">Add item to wishlist:</p>
 <form method="post" name="thumbForm" action="{{ url_for('showSubmit') }}" >
     <label for="website">URL:</label>
     <input type="text" name="website" /><br />
     
-    <input type="submit" />                
+    <input class = "text-center" type="submit" value = "Add to wishlist"/>                
 
 </form>
+</div>
+
 <script type="text/javascript">
-    var name = localStorage.setItem('currentUser', "{{currentUser}}");
+    var name = localStorage.setItem('nowUser', "{{nowUser}}");
     console.log(name);
 </script>
+
+
 {% endblock %}
